@@ -1,0 +1,116 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: > 
+ Sample SAM Template for {{ cookiecutter.project_name }}
+
+Globals:
+  Function:
+    Timeout: 3
+    MemorySize: 128
+
+Parameters:
+    DeployStage:
+      Type: String
+      Default: "{{cookiecutter.deploy_stage}}"  # Deployment stage name to use in API Gateway  
+    SecretToken:
+      Type: String
+      Default: "{{cookiecutter.app_name_hyphen}}-token" # Token name to use for authorization
+
+Resources:
+  # Create a secret token in Secrets Manager. 
+  {{cookiecutter.app_name_camel}}ApiTokenSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: "MyAppApiToken"
+      SecretString: !Ref SecretToken
+  
+  # This creates the API gateway resources to access the lambda function. Note that we are also creating
+  # an authorizer which will get attached to the resources in the API gateway
+  {{cookiecutter.app_name_camel}}AppAPI:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref DeployStage
+      Auth:
+        DefaultAuthorizer: LambdaTokenAuthorizer
+        Authorizers:
+          LambdaTokenAuthorizer:
+            FunctionArn: !GetAtt {{cookiecutter.app_name_camel}}AppAuthFunction.Arn
+            Identity:
+              Header: authorizationToken
+
+  # The lambda function which hosts myapp. Note the different attributes in this section. 
+  # SAM will use these inputs and build the docker image accordingly and upload the same 
+  # in ECR.           
+  {{cookiecutter.app_name_camel}}AppFunction:
+    Type: AWS::Serverless::Function 
+    Metadata:
+      Dockerfile: Dockerfile
+      DockerContext: .
+      DockerTag: latest  
+    Properties:
+      FunctionUrlConfig:       # We are also creating a function URL in lambda just for testing purpose.
+        AuthType: NONE
+      PackageType: Image
+      ImageConfig:
+        Command: ["app.main.handler"]
+      Architectures:
+      {%- for arch in cookiecutter.architectures.value %}
+        - {{arch}}
+      {%- endfor %}
+      {%- endif %}
+      Events:     # The events section will make sure to create the respective method and resource in the API gateway
+        default:  # Note that we are creating a {proxy+} resource so that all type of requests can be served.
+          Type: Api
+          Properties:
+            RestApiId: !Ref {{cookiecutter.app_name_camel}}AppAPI
+            Path: {{cookiecutter.api_path}}
+            Method: ANY
+            Auth:
+              DefaultAuthorizer: {{cookiecutter.app_name_camel}}AppAuthorizer
+              Authorizers:
+                {{cookiecutter.app_name_camel}}AppAuthorizer:
+                  FunctionArn: !GetAtt {{cookiecutter.app_name_camel}}AppAuthFunction.Arn         
+        proxy:
+          Type: Api
+          Properties:
+            RestApiId: !Ref {{cookiecutter.app_name_camel}}AppAPI
+            Path: {{cookiecutter.api_path}}{proxy+}
+            Method: ANY
+            Auth:
+              DefaultAuthorizer: {{cookiecutter.app_name_camel}}AppAuthorizer
+              Authorizers:
+                {{cookiecutter.app_name_camel}}AppAuthorizer:
+                  FunctionArn: !GetAtt {{cookiecutter.app_name_camel}}AppAuthFunction.Arn
+  
+  # The lambda function used for validating the token before API gateway calls the main lambda function                
+  MyAppAuthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./authorizer
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Environment:
+        Variables:
+          SECRET_ID: "{{cookiecutter.app_name_camel}}AppApiToken"
+      Policies:
+      - Statement:
+        - Sid: CreateLogGroup
+          Effect: Allow
+          Action:
+          - logs:CreateLogStream
+          - logs:PutLogEvents
+          Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*'
+        - Sid: AllowSecretsAccess
+          Effect: Allow
+          Action:
+          - secretsmanager:GetSecretValue
+          Resource: !Ref {{cookiecutter.app_name_camel}}ApiTokenSecret
+Outputs:
+  MyAppAPI:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${MyAppAPI}.execute-api.${AWS::Region}.amazonaws.com/${DeployStage}"
+  MyAppFunctionUrlEndpoint:
+      Description: "Functional docs URL(for internal use only)"
+      Value: !Join ["", [ Fn::GetAtt: {{cookiecutter.app_name_camel}}AppFunctionUrl.FunctionUrl, "docs" ] ]         
+  
+  

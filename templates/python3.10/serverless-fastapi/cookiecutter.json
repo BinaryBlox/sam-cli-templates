@@ -1,0 +1,19 @@
+{
+    "project_name": "sam-fastapi",  
+    "app_name": "{{cookiecutter.project_name.lower().replace(' ', '-') }}",
+    "app_name_hyphen": "{{cookiecutter.app_name.lower().replace(' ', '-') }}",
+    "app_name_camel": "{{cookiecutter.app_name.replace(' ', '') }}",
+    "api_path": "/",
+    "deploy_stage": ["development", "test", "stage", "production"], 
+    "runtime": ["python3.10"], 
+    "architectures": {
+        "value": [
+            "x86_64", "arm64"
+        ]
+    },
+    "port_config": "8000:80",
+    "_copy_without_render": [
+        ".gitignore"
+    ],
+    "__stack_name": "sam-{{cookiecutter.project_prefix}}"
+}
