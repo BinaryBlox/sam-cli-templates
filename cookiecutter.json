@@ -1,6 +1,6 @@
 {
-    "project_name": "sam-fastapi",  
-    "app_name": "{{cookiecutter.project_name.lower().replace(' ', '-') }}",
+    "project_name": "sam-fastapi-hello-world",  
+    "app_name": "Hello World",
     "app_name_hyphen": "{{cookiecutter.app_name.lower().replace(' ', '-') }}",
     "app_name_camel": "{{cookiecutter.app_name.replace(' ', '') }}",
     "api_path": "/",
