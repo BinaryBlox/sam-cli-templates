@@ -15,5 +15,5 @@
     "_copy_without_render": [
         ".gitignore"
     ],
-    "__stack_name": "sam-{{cookiecutter.project_prefix}}"
+    "__stack_name": "sam-{{cookiecutter.project_name.lower().replace(' ', '-') }}"
 }
