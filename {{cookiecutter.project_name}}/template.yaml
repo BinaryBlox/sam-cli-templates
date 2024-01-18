@@ -53,6 +53,7 @@ Resources:
       PackageType: Image
       ImageConfig:
         Command: ["app.main.handler"]
+      {%- if cookiecutter.architectures.value != []%}
       Architectures:
       {%- for arch in cookiecutter.architectures.value %}
         - {{arch}}
